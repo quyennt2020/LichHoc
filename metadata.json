@@ -1,0 +1,7 @@
+{
+  "name": "Copy of MySchedule",
+  "description": "An application to help students effectively manage their school schedule, extra classes, and self-study/homework at home in a visual and flexible way.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
