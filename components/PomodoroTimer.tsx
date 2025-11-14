@@ -38,6 +38,17 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ task, onClose, onComplete
   const [wasAutoPaused, setWasAutoPaused] = useState(false);
   const awayTimerRef = useRef<number | null>(null);
 
+  // Refs to hold the latest state for use inside the rAF loop, avoiding stale closures.
+  const isActiveRef = useRef(isActive);
+  useEffect(() => {
+    isActiveRef.current = isActive;
+  }, [isActive]);
+
+  const isFaceDetectedRef = useRef(isFaceDetected);
+  useEffect(() => {
+    isFaceDetectedRef.current = isFaceDetected;
+  }, [isFaceDetected]);
+
 
   useEffect(() => {
     audioRef.current = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
@@ -144,12 +155,11 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ task, onClose, onComplete
           await new Promise((resolve) => {
             if (videoRef.current) videoRef.current.onloadeddata = () => resolve(true);
           });
-          videoRef.current.play();
         }
 
         // STEP 3: Start the prediction loop.
         let lastVideoTime = -1;
-        const predictWebcam = () => {
+        const predictWebcam = async () => {
             const video = videoRef.current;
             const detector = faceDetectorRef.current;
 
@@ -161,17 +171,19 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ task, onClose, onComplete
 
             // If the video is paused, attempt to play it. This can happen if the browser
             // pauses video playback for performance reasons (e.g., after a manual pause/resume).
-            // We'll continue the loop on the next frame.
             if (video.paused) {
-                video.play().catch(e => {
+                try {
+                    await video.play();
+                } catch (e: any) {
                     // This error can happen during cleanup when the video source is removed.
-                    // Only log it if the video source is still expected to be present.
-                    if (videoRef.current && videoRef.current.srcObject) {
+                    // We can safely ignore the AbortError.
+                    if (e.name !== 'AbortError' && videoRef.current && videoRef.current.srcObject) {
                         console.error("Error attempting to play video in detection loop:", e);
                     }
-                });
-                animationFrameIdRef.current = requestAnimationFrame(predictWebcam);
-                return;
+                    // If play fails, try again on the next frame.
+                    animationFrameIdRef.current = requestAnimationFrame(predictWebcam);
+                    return;
+                }
             }
 
             // If the video has ended, there's nothing to detect.
@@ -181,11 +193,17 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ task, onClose, onComplete
             }
             
             // Only run detection if the video frame has updated and has valid dimensions.
-            // This prevents the MediaPipe error: "roi->width > 0 && roi->height > 0".
-            if (video.videoWidth > 0 && video.videoHeight > 0 && video.currentTime !== lastVideoTime) {
-                lastVideoTime = video.currentTime;
-                const result = detector.detectForVideo(video, performance.now());
-                setIsFaceDetected(result.detections.length > 0);
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+                const isNewFrame = video.currentTime !== lastVideoTime;
+                
+                // Always try to detect if the timer is active but no face is currently found.
+                // This is crucial for re-acquiring a face if detection was lost while the video
+                // was paused by the browser, which can happen upon resuming the timer manually.
+                if (isNewFrame || (isActiveRef.current && !isFaceDetectedRef.current)) {
+                    lastVideoTime = video.currentTime;
+                    const result = detector.detectForVideo(video, performance.now());
+                    setIsFaceDetected(result.detections.length > 0);
+                }
             }
             
             // Continue the loop.
