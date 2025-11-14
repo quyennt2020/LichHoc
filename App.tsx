@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import ClassSchedule from './components/ClassSchedule';
 import HomeSchedule from './components/HomeSchedule';
@@ -10,7 +11,10 @@ import { Subject, ClassEvent, HomeTask, ActiveTab, ModalState, DayOfWeek, Sugges
 import { INITIAL_SUBJECTS, INITIAL_CLASS_EVENTS, INITIAL_HOME_TASKS, DAYS_OF_WEEK } from './constants';
 import { StyleInjector } from './components/Modal';
 import { PomodoroTimer, PomodoroStyles } from './components/PomodoroTimer';
-import { TrashIcon, SunIcon, MoonIcon, BellIcon, ClipboardIcon } from './components/icons';
+import ConfirmationModal from './components/ConfirmationModal';
+import ColorPicker from './components/ColorPicker';
+import { TrashIcon, SunIcon, MoonIcon, BellIcon, ClipboardIcon, ArrowUpTrayIcon } from './components/icons';
+import AcceptSuggestionModal from './components/AcceptSuggestionModal';
 
 type Theme = 'light' | 'dark';
 
@@ -96,6 +100,19 @@ const Header: React.FC<{
   );
 };
 
+const SUBJECT_COLOR_PALETTE: string[] = [
+  'bg-rose-50 text-rose-800 border-l-4 border-rose-400 dark:bg-rose-900 dark:text-rose-200 dark:border-rose-500',
+  'bg-sky-50 text-sky-800 border-l-4 border-sky-400 dark:bg-sky-900 dark:text-sky-200 dark:border-sky-500',
+  'bg-emerald-50 text-emerald-800 border-l-4 border-emerald-400 dark:bg-emerald-900 dark:text-emerald-200 dark:border-emerald-500',
+  'bg-amber-50 text-amber-800 border-l-4 border-amber-400 dark:bg-amber-900 dark:text-amber-200 dark:border-amber-500',
+  'bg-violet-50 text-violet-800 border-l-4 border-violet-400 dark:bg-violet-900 dark:text-violet-200 dark:border-violet-500',
+  'bg-fuchsia-50 text-fuchsia-800 border-l-4 border-fuchsia-400 dark:bg-fuchsia-900 dark:text-fuchsia-200 dark:border-fuchsia-500',
+  'bg-indigo-50 text-indigo-800 border-l-4 border-indigo-400 dark:bg-indigo-900 dark:text-indigo-200 dark:border-indigo-500',
+  'bg-pink-50 text-pink-800 border-l-4 border-pink-400 dark:bg-pink-900 dark:text-pink-200 dark:border-pink-500',
+  'bg-teal-50 text-teal-800 border-l-4 border-teal-400 dark:bg-teal-900 dark:text-teal-200 dark:border-teal-500',
+  'bg-slate-50 text-slate-800 border-l-4 border-slate-400 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-500',
+];
+
 const SubjectManagerModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -104,14 +121,8 @@ const SubjectManagerModal: React.FC<{
 }> = ({ isOpen, onClose, subjects: initialSubjects, onUpdate }) => {
     const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
     const [newSubjectName, setNewSubjectName] = useState('');
-    const [newSubjectColor, setNewSubjectColor] = useState('bg-gray-200 text-gray-800 border-gray-300');
-    
-    const colorOptions = [
-        'bg-red-200 text-red-800 border-red-300', 'bg-blue-200 text-blue-800 border-blue-300',
-        'bg-green-200 text-green-800 border-green-300', 'bg-yellow-200 text-yellow-800 border-yellow-300',
-        'bg-purple-200 text-purple-800 border-purple-300', 'bg-pink-200 text-pink-800 border-pink-300',
-        'bg-indigo-200 text-indigo-800 border-indigo-300', 'bg-teal-200 text-teal-800 border-teal-300'
-    ];
+    const [newSubjectColor, setNewSubjectColor] = useState(SUBJECT_COLOR_PALETTE[0]);
+    const [confirmation, setConfirmation] = useState<{ message: string; onConfirm: () => void; } | null>(null);
 
     useEffect(() => {
         setSubjects(initialSubjects);
@@ -121,17 +132,26 @@ const SubjectManagerModal: React.FC<{
         setSubjects(subjects.map(s => s.id === id ? {...s, name} : s));
     };
 
+    const handleColorUpdate = (id: string, color: string) => {
+        setSubjects(subjects.map(s => s.id === id ? {...s, color} : s));
+    };
+
     const handleAdd = () => {
         if (newSubjectName.trim()) {
             setSubjects([...subjects, { id: crypto.randomUUID(), name: newSubjectName.trim(), color: newSubjectColor }]);
             setNewSubjectName('');
+            setNewSubjectColor(SUBJECT_COLOR_PALETTE[0]);
         }
     };
     
     const handleDelete = (id: string) => {
-        if (window.confirm("Are you sure you want to delete this subject? This will also delete all associated classes and tasks.")) {
-            setSubjects(current => current.filter(s => s.id !== id));
-        }
+        setConfirmation({
+            message: "Are you sure you want to delete this subject? This will also delete all associated classes and tasks.",
+            onConfirm: () => {
+                setSubjects(current => current.filter(s => s.id !== id));
+                setConfirmation(null);
+            }
+        });
     };
     
     const handleSave = () => {
@@ -145,8 +165,12 @@ const SubjectManagerModal: React.FC<{
                 <h2 className="text-xl font-bold mb-4">Manage Subjects</h2>
                 <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
                     {subjects.map(subject => (
-                        <div key={subject.id} className="flex items-center gap-2">
-                            <span className={`w-6 h-6 rounded-full ${subject.color.split(' ')[0]}`}></span>
+                        <div key={subject.id} className="flex items-center gap-3">
+                            <ColorPicker
+                                value={subject.color}
+                                onChange={(color) => handleColorUpdate(subject.id, color)}
+                                colorPalette={SUBJECT_COLOR_PALETTE}
+                            />
                             <input type="text" value={subject.name} onChange={e => handleUpdate(subject.id, e.target.value)} className="flex-grow p-1 rounded bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border" />
                             <button onClick={() => handleDelete(subject.id)} className="text-red-500 hover:text-red-700"><TrashIcon className="w-5 h-5" /></button>
                         </div>
@@ -154,11 +178,13 @@ const SubjectManagerModal: React.FC<{
                 </div>
                 <div className="mt-4 pt-4 border-t border-light-border dark:border-dark-border">
                     <h3 className="font-semibold mb-2">Add New Subject</h3>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         <input type="text" value={newSubjectName} onChange={e => setNewSubjectName(e.target.value)} placeholder="Subject Name" className="flex-grow p-1 rounded bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border" />
-                        <select value={newSubjectColor} onChange={e => setNewSubjectColor(e.target.value)} className="p-1 rounded bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border">
-                            {colorOptions.map(c => <option key={c} value={c} className={c.split(' ')[0]}>{c.split(' ')[0].split('-')[1]}</option>)}
-                        </select>
+                        <ColorPicker
+                            value={newSubjectColor}
+                            onChange={setNewSubjectColor}
+                            colorPalette={SUBJECT_COLOR_PALETTE}
+                        />
                         <button onClick={handleAdd} className="bg-brand-primary text-white px-3 py-1 rounded">Add</button>
                     </div>
                 </div>
@@ -167,6 +193,16 @@ const SubjectManagerModal: React.FC<{
                     <button onClick={handleSave} className="px-4 py-2 bg-brand-primary text-white rounded-md">Save Changes</button>
                 </div>
             </div>
+            {confirmation && (
+                <ConfirmationModal
+                    isOpen={true}
+                    onClose={() => setConfirmation(null)}
+                    onConfirm={confirmation.onConfirm}
+                    title="Confirm Deletion"
+                    message={confirmation.message}
+                    confirmText="Delete Subject"
+                />
+            )}
         </div>
     );
 };
@@ -195,6 +231,8 @@ const App: React.FC = () => {
   });
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const sentNotificationsRef = useRef(new Set<string>());
+  const [confirmation, setConfirmation] = useState<{ title: string; message: string; onConfirm: () => void; confirmText?: string; } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -320,10 +358,15 @@ const App: React.FC = () => {
   }, []);
 
   const handleDeleteClass = useCallback((eventId: string) => {
-    if (window.confirm('Are you sure you want to delete this class? This action cannot be undone.')) {
-        setClassEvents(prevEvents => prevEvents.filter(e => e.id !== eventId));
-        handleCloseModal();
-    }
+    setConfirmation({
+        title: 'Delete Class',
+        message: 'Are you sure you want to delete this class? This action cannot be undone.',
+        onConfirm: () => {
+            setClassEvents(prevEvents => prevEvents.filter(e => e.id !== eventId));
+            handleCloseModal();
+        },
+        confirmText: 'Delete Class'
+    });
   }, [handleCloseModal]);
   
   const handleSaveHomeTask = useCallback((taskData: Omit<HomeTask, 'id' | 'completed'> | HomeTask) => {
@@ -338,10 +381,15 @@ const App: React.FC = () => {
   }, []);
   
   const handleDeleteHomeTask = useCallback((taskId: string) => {
-    if (window.confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
-        setHomeTasks(prevTasks => prevTasks.filter(t => t.id !== taskId));
-        handleCloseModal();
-    }
+    setConfirmation({
+        title: 'Delete Task',
+        message: 'Are you sure you want to delete this task? This action cannot be undone.',
+        onConfirm: () => {
+            setHomeTasks(prevTasks => prevTasks.filter(t => t.id !== taskId));
+            handleCloseModal();
+        },
+        confirmText: 'Delete Task'
+    });
   }, [handleCloseModal]);
 
   const handleTaskToggle = useCallback((taskId: string) => {
@@ -381,27 +429,21 @@ const App: React.FC = () => {
       setPomodoroDuration(duration);
   }, []);
 
-  const handleAcceptSuggestion = useCallback((acceptedSlot: SuggestedTaskSlot) => {
-      const timeToMinutes = (time: string) => {
-        const [h, m] = time.split(':').map(Number);
-        return h * 60 + m;
-      };
-      const duration = timeToMinutes(acceptedSlot.endTime) - timeToMinutes(acceptedSlot.startTime);
-      
+  const handleAcceptSuggestionFromModal = useCallback((taskData: Omit<HomeTask, 'id' | 'completed'>) => {
+      const originalSuggestion = modalState.data as SuggestedTaskSlot;
+      if (!originalSuggestion) return;
+
       const newHomeTask: HomeTask = {
-        ...acceptedSlot.task,
-        id: crypto.randomUUID(),
-        title: `${acceptedSlot.task.title} (${duration} min)`,
-        estimatedTime: duration,
-        day: acceptedSlot.day,
-        startTime: acceptedSlot.startTime,
-        content: `Study session for ${acceptedSlot.task.title}`,
+          ...taskData,
+          id: crypto.randomUUID(),
+          completed: false,
       };
       
       setHomeTasks(prev => [...prev, newHomeTask]);
-      // When accepting a suggestion, remove ALL other suggestions related to the original task
-      setSuggestedSlots(prev => prev.filter(s => s.task.id !== acceptedSlot.task.id));
-  }, []);
+      setSuggestedSlots(prev => prev.filter(s => s.task.id !== originalSuggestion.task.id));
+      
+      handleCloseModal();
+  }, [modalState.data, handleCloseModal]);
 
   const handleGenerateSchedule = useCallback(() => {
     // Helper to convert time string "HH:mm" to a 15-minute interval index (0-59) from 7:00 to 22:00
@@ -624,6 +666,71 @@ const App: React.FC = () => {
           return task;
       }));
   }, []);
+  
+  const handleExportData = useCallback(() => {
+    try {
+      const dataToExport = {
+        subjects,
+        classEvents,
+        homeTasks,
+      };
+      const dataStr = JSON.stringify(dataToExport, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const today = new Date().toISOString().slice(0, 10);
+      link.download = `myschedule_backup_${today}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to export data:", error);
+      alert("An error occurred while exporting your data. Please try again.");
+    }
+  }, [subjects, classEvents, homeTasks]);
+
+  const handleImportData = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result;
+        if (typeof text !== 'string') throw new Error("File content is not readable.");
+        
+        const importedData = JSON.parse(text);
+        if (!Array.isArray(importedData.subjects) || !Array.isArray(importedData.classEvents) || !Array.isArray(importedData.homeTasks)) {
+          throw new Error("Invalid file format. The file must contain subjects, classEvents, and homeTasks arrays.");
+        }
+
+        setConfirmation({
+          title: 'Import Data',
+          message: 'Are you sure you want to import this data? This will overwrite all of your current schedules, tasks, and subjects.',
+          onConfirm: () => {
+            setSubjects(importedData.subjects);
+            setClassEvents(importedData.classEvents);
+            setHomeTasks(importedData.homeTasks);
+          },
+          confirmText: 'Import & Overwrite'
+        });
+        
+      } catch (error: any) {
+        console.error("Failed to import data:", error);
+        alert(`An error occurred while importing the file: ${error.message}`);
+      } finally {
+        if (event.target) event.target.value = '';
+      }
+    };
+    reader.onerror = () => alert("Failed to read the file.");
+    reader.readAsText(file);
+  }, []);
 
   const renderContent = () => {
     switch(activeTab) {
@@ -644,7 +751,7 @@ const App: React.FC = () => {
           homeTasks={homeTasks}
           onEventClick={event => handleOpenModal('editClass', event)}
           onScheduledTaskClick={task => handleOpenModal('editHomeTask', task)}
-          onAcceptSuggestion={handleAcceptSuggestion}
+          onSuggestionClick={(suggestion) => handleOpenModal('acceptSuggestion', suggestion)}
           onUpdatePosition={handleUpdateScheduleItemPosition}
         />;
       case 'home':
@@ -694,6 +801,8 @@ const App: React.FC = () => {
             onAddClass={() => handleOpenModal('addClass')} 
             onAddHomeTask={() => handleOpenModal('addHomeTask')}
             onManageSubjects={() => handleOpenModal('manageSubjects')}
+            onExportData={handleExportData}
+            onImportData={handleImportData}
         />
 
         <AddClassModal
@@ -714,6 +823,14 @@ const App: React.FC = () => {
           taskToEdit={modalState.type === 'editHomeTask' ? modalState.data as HomeTask : null}
         />
 
+        <AcceptSuggestionModal
+            isOpen={modalState.type === 'acceptSuggestion'}
+            onClose={handleCloseModal}
+            onAccept={handleAcceptSuggestionFromModal}
+            subjects={subjects}
+            suggestion={modalState.data as SuggestedTaskSlot | null}
+        />
+
         <SubjectManagerModal
             isOpen={modalState.type === 'manageSubjects'}
             onClose={handleCloseModal}
@@ -728,6 +845,27 @@ const App: React.FC = () => {
             currentDuration={pomodoroDuration}
         />
 
+        <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="application/json"
+            className="hidden"
+        />
+
+        {confirmation && (
+            <ConfirmationModal
+                isOpen={!!confirmation}
+                onClose={() => setConfirmation(null)}
+                onConfirm={() => {
+                    confirmation.onConfirm();
+                    setConfirmation(null);
+                }}
+                title={confirmation.title}
+                message={confirmation.message}
+                confirmText={confirmation.confirmText}
+            />
+        )}
       </div>
     </>
   );

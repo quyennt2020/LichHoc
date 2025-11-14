@@ -13,6 +13,14 @@ interface AddHomeTaskModalProps {
   taskToEdit?: HomeTask | null;
 }
 
+// Moved InputField outside the main component to prevent re-creation on render.
+const InputField: React.FC<{label: string, children: React.ReactNode}> = ({label, children}) => (
+  <div>
+      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{label}</label>
+      {children}
+  </div>
+);
+
 const AddHomeTaskModal: React.FC<AddHomeTaskModalProps> = ({ isOpen, onClose, onSave, onDelete, subjects, taskToEdit }) => {
   const [title, setTitle] = useState('');
   const [subjectId, setSubjectId] = useState('');
@@ -25,25 +33,27 @@ const AddHomeTaskModal: React.FC<AddHomeTaskModalProps> = ({ isOpen, onClose, on
 
 
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    if (taskToEdit) {
-      setTitle(taskToEdit.title);
-      setSubjectId(taskToEdit.subjectId);
-      setDueDate(taskToEdit.dueDate);
-      setEstimatedTime(taskToEdit.estimatedTime);
-      setPriority(taskToEdit.priority);
-      setContent(taskToEdit.content);
-      setDay(taskToEdit.day || '');
-      setStartTime(taskToEdit.startTime || '');
-    } else {
-      setTitle('');
-      setSubjectId(subjects[0]?.id || '');
-      setDueDate(today);
-      setEstimatedTime(60);
-      setPriority('Medium');
-      setContent('');
-      setDay('');
-      setStartTime('');
+    if (isOpen) {
+      const today = new Date().toISOString().split('T')[0];
+      if (taskToEdit) {
+        setTitle(taskToEdit.title);
+        setSubjectId(taskToEdit.subjectId);
+        setDueDate(taskToEdit.dueDate);
+        setEstimatedTime(taskToEdit.estimatedTime);
+        setPriority(taskToEdit.priority);
+        setContent(taskToEdit.content);
+        setDay(taskToEdit.day || '');
+        setStartTime(taskToEdit.startTime || '');
+      } else {
+        setTitle('');
+        setSubjectId(subjects[0]?.id || '');
+        setDueDate(today);
+        setEstimatedTime(60);
+        setPriority('Medium');
+        setContent('');
+        setDay('');
+        setStartTime('');
+      }
     }
   }, [taskToEdit, isOpen, subjects]);
 
@@ -79,13 +89,6 @@ const AddHomeTaskModal: React.FC<AddHomeTaskModalProps> = ({ isOpen, onClose, on
     }
   }
   
-  const InputField: React.FC<{label: string, children: React.ReactNode}> = ({label, children}) => (
-    <div>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{label}</label>
-        {children}
-    </div>
-  );
-
   const inputClasses = "mt-1 block w-full px-3 py-2 bg-white dark:bg-dark-card border border-light-border dark:border-dark-border rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm";
 
   return (

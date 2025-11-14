@@ -1,4 +1,5 @@
 
+
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 
 export interface Subject {
@@ -41,11 +42,12 @@ export type ModalType =
   | 'editHomeTask' 
   | 'manageSubjects'
   | 'pomodoroSettings'
+  | 'acceptSuggestion'
   | null;
 
 export interface ModalState {
   type: ModalType;
-  data?: ClassEvent | HomeTask | null;
+  data?: ClassEvent | HomeTask | SuggestedTaskSlot | null;
 }
 
 export interface SuggestedTaskSlot {

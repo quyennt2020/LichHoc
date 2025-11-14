@@ -11,7 +11,7 @@ interface ClassScheduleProps {
   homeTasks: HomeTask[];
   onEventClick: (event: ClassEvent) => void;
   onScheduledTaskClick: (task: HomeTask) => void;
-  onAcceptSuggestion: (suggestion: SuggestedTaskSlot) => void;
+  onSuggestionClick: (suggestion: SuggestedTaskSlot) => void;
   onUpdatePosition: (itemId: string, newDay: DayOfWeek, newStartTime: string) => void;
 }
 
@@ -108,10 +108,10 @@ const ClockDayView: React.FC<{
     getSubject: (id: string) => Subject | undefined;
     onEventClick: (event: ClassEvent) => void;
     onScheduledTaskClick: (task: HomeTask) => void;
-    onAcceptSuggestion: (suggestion: SuggestedTaskSlot) => void;
+    onSuggestionClick: (suggestion: SuggestedTaskSlot) => void;
     setHoveredEvent: (state: { item: ScheduleItem; position: { x: number; y: number; } } | null) => void;
     zoomLevel: number;
-}> = ({ dayEvents, getSubject, onEventClick, onScheduledTaskClick, onAcceptSuggestion, setHoveredEvent, zoomLevel }) => {
+}> = ({ dayEvents, getSubject, onEventClick, onScheduledTaskClick, onSuggestionClick, setHoveredEvent, zoomLevel }) => {
     
     const size = 280 * (zoomLevel / 100);
     const center = size / 2;
@@ -235,7 +235,7 @@ const ClockDayView: React.FC<{
                         className="cursor-pointer transition-opacity duration-200 hover:opacity-80"
                         style={{ opacity: isClassEvent(layout) ? 1 : (isHomeTask(layout) ? 0.9 : 0.75) }}
                         onClick={() => {
-                            if (isSuggestion(layout)) onAcceptSuggestion(layout);
+                            if (isSuggestion(layout)) onSuggestionClick(layout);
                             else if (isHomeTask(layout)) onScheduledTaskClick(layout);
                             else onEventClick(layout);
                         }}
@@ -250,11 +250,12 @@ const ClockDayView: React.FC<{
 };
 
 // --- MONTH VIEW COMPONENT ---
-const MonthView: React.FC<Omit<ClassScheduleProps, 'onUpdatePosition'> & {
+const MonthView: React.FC<Omit<ClassScheduleProps, 'onUpdatePosition' | 'onAcceptSuggestion'> & {
+    onSuggestionClick: (suggestion: SuggestedTaskSlot) => void;
     currentMonth: Date;
     setCurrentMonth: (date: Date) => void;
     getSubject: (subjectId: string) => Subject | undefined;
-}> = ({ events, subjects, suggestions, homeTasks, onEventClick, onScheduledTaskClick, onAcceptSuggestion, currentMonth, setCurrentMonth, getSubject }) => {
+}> = ({ events, subjects, suggestions, homeTasks, onEventClick, onScheduledTaskClick, onSuggestionClick, currentMonth, setCurrentMonth, getSubject }) => {
     const [selectedDayData, setSelectedDayData] = useState<{ date: Date; items: ScheduleItem[]; ref: HTMLDivElement | null } | null>(null);
     const isDarkMode = document.documentElement.classList.contains('dark');
 
@@ -356,7 +357,7 @@ const MonthView: React.FC<Omit<ClassScheduleProps, 'onUpdatePosition'> & {
 
                             return (
                                 <li key={item.id} className="p-2 hover:bg-light-card dark:hover:bg-dark-card transition-colors cursor-pointer" onClick={() => {
-                                    if (isSuggestion(item)) onAcceptSuggestion(item);
+                                    if (isSuggestion(item)) onSuggestionClick(item);
                                     else if (isHomeTask(item)) onScheduledTaskClick(item);
                                     else onEventClick(item);
                                     setSelectedDayData(null);
@@ -440,7 +441,7 @@ const MonthView: React.FC<Omit<ClassScheduleProps, 'onUpdatePosition'> & {
 
 
 const ClassSchedule: React.FC<ClassScheduleProps> = (props) => {
-  const { events, subjects, suggestions, homeTasks, onEventClick, onScheduledTaskClick, onAcceptSuggestion, onUpdatePosition } = props;
+  const { events, subjects, suggestions, homeTasks, onEventClick, onScheduledTaskClick, onSuggestionClick, onUpdatePosition } = props;
   const [view, setView] = useState<'timeline' | 'clock' | 'month'>('timeline');
   const [zoomLevel, setZoomLevel] = useState(100);
   const [hoveredEvent, setHoveredEvent] = useState<{ item: ScheduleItem, position: { x: number, y: number } } | null>(null);
@@ -582,7 +583,7 @@ const ClassSchedule: React.FC<ClassScheduleProps> = (props) => {
                             zIndex: draggingItemId === item.id ? 20 : (isEventHighlighted ? 10 : (isSuggestion(item) ? 5 : 1))
                         }}
                         onClick={() => {
-                            if (isSuggestion(item)) onAcceptSuggestion(item);
+                            if (isSuggestion(item)) onSuggestionClick(item);
                             else if (isHomeTask(item)) onScheduledTaskClick(item as HomeTask);
                             else onEventClick(item as ClassEvent);
                         }}
@@ -621,7 +622,7 @@ const ClassSchedule: React.FC<ClassScheduleProps> = (props) => {
                     getSubject={getSubject} 
                     onEventClick={onEventClick} 
                     onScheduledTaskClick={onScheduledTaskClick}
-                    onAcceptSuggestion={onAcceptSuggestion}
+                    onSuggestionClick={onSuggestionClick}
                     setHoveredEvent={setHoveredEvent}
                     zoomLevel={zoomLevel}
                 />
@@ -663,7 +664,6 @@ const ClassSchedule: React.FC<ClassScheduleProps> = (props) => {
               </div>
           )}
           {view === 'clock' && renderClockView()}
-          {/* FIX: Pass explicit props to MonthView instead of spreading `props`, which incorrectly included `onUpdatePosition`. */}
           {view === 'month' && (
               <MonthView
                   events={events}
@@ -672,7 +672,7 @@ const ClassSchedule: React.FC<ClassScheduleProps> = (props) => {
                   homeTasks={homeTasks}
                   onEventClick={onEventClick}
                   onScheduledTaskClick={onScheduledTaskClick}
-                  onAcceptSuggestion={onAcceptSuggestion}
+                  onSuggestionClick={onSuggestionClick}
                   currentMonth={currentMonth}
                   setCurrentMonth={setCurrentMonth}
                   getSubject={getSubject}

@@ -13,6 +13,14 @@ interface AddClassModalProps {
   eventToEdit?: ClassEvent | null;
 }
 
+// Moved InputField outside the main component to prevent re-creation on render.
+const InputField: React.FC<{label: string, children: React.ReactNode}> = ({label, children}) => (
+  <div>
+      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{label}</label>
+      {children}
+  </div>
+);
+
 const AddClassModal: React.FC<AddClassModalProps> = ({ isOpen, onClose, onSave, onDelete, subjects, eventToEdit }) => {
   const [subjectId, setSubjectId] = useState('');
   const [day, setDay] = useState<DayOfWeek>('Monday');
@@ -24,25 +32,27 @@ const AddClassModal: React.FC<AddClassModalProps> = ({ isOpen, onClose, onSave, 
   const [highlighted, setHighlighted] = useState(false);
 
   useEffect(() => {
-    if (eventToEdit) {
-      setSubjectId(eventToEdit.subjectId);
-      setDay(eventToEdit.day);
-      setStartTime(eventToEdit.startTime);
-      setEndTime(eventToEdit.endTime);
-      setRoom(eventToEdit.room || '');
-      setTeacher(eventToEdit.teacher || '');
-      setNotes(eventToEdit.notes || '');
-      setHighlighted(eventToEdit.highlighted || false);
-    } else {
-      // Reset form
-      setSubjectId(subjects[0]?.id || '');
-      setDay('Monday');
-      setStartTime('08:00');
-      setEndTime('09:00');
-      setRoom('');
-      setTeacher('');
-      setNotes('');
-      setHighlighted(false);
+    if (isOpen) {
+      if (eventToEdit) {
+        setSubjectId(eventToEdit.subjectId);
+        setDay(eventToEdit.day);
+        setStartTime(eventToEdit.startTime);
+        setEndTime(eventToEdit.endTime);
+        setRoom(eventToEdit.room || '');
+        setTeacher(eventToEdit.teacher || '');
+        setNotes(eventToEdit.notes || '');
+        setHighlighted(eventToEdit.highlighted || false);
+      } else {
+        // Reset form
+        setSubjectId(subjects[0]?.id || '');
+        setDay('Monday');
+        setStartTime('08:00');
+        setEndTime('09:00');
+        setRoom('');
+        setTeacher('');
+        setNotes('');
+        setHighlighted(false);
+      }
     }
   }, [eventToEdit, isOpen, subjects]);
 
@@ -78,13 +88,6 @@ const AddClassModal: React.FC<AddClassModalProps> = ({ isOpen, onClose, onSave, 
         onDelete(eventToEdit.id);
     }
   };
-
-  const InputField: React.FC<{label: string, children: React.ReactNode}> = ({label, children}) => (
-    <div>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{label}</label>
-        {children}
-    </div>
-  );
   
   const inputClasses = "mt-1 block w-full px-3 py-2 bg-white dark:bg-dark-card border border-light-border dark:border-dark-border rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm";
 
